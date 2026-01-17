@@ -20,6 +20,7 @@ import StudentAchievements from '../pages/student/Achievements';
 
 // College pages
 import CollegeDashboard from '../pages/college/Dashboard';
+import CollegeStudents from '../pages/college/Students';
 
 // Recruiter pages
 import RecruiterDashboard from '../pages/recruiter/Dashboard';
@@ -120,6 +121,17 @@ const AppRoutes = () => {
               </RoleRoute>
             }
           />
+          <Route
+  path="/college/students"
+  element={
+    <RoleRoute allowedRoles={[ROLES.COLLEGE]}>
+      <Layout>
+        <CollegeStudents />
+      </Layout>
+    </RoleRoute>
+  }
+/>
+
 
           {/* Recruiter routes */}
           <Route
