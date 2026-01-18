@@ -12,7 +12,17 @@ export const studentRegisterSchema = z.object({
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
   collegeId: z.string().min(1, "College is required"),
   enrollmentNumber: z.string().min(1, "Enrollment number is required"),
-  yearOfStudy: z.number().int().min(1).max(5).optional(),
+  // 🔥 FIXED: Automatically convert string input to number, handling empty values
+  yearOfStudy: z.preprocess(
+    (val) =>
+      val === "" || val === undefined || val === null ? undefined : Number(val),
+    z
+      .number({ invalid_type_error: "Must be a number" })
+      .int()
+      .min(1, "Year must be between 1 and 5")
+      .max(5, "Year must be between 1 and 5")
+      .optional(),
+  ),
   branch: z.string().optional(),
 });
 
@@ -77,7 +87,6 @@ export const projectSchema = z.object({
 });
 
 export const achievementSchema = z.object({
-  // Update min(1) to min(2) to match backend
   title: z.string().min(2, "Title must be at least 2 characters"),
   description: z.string().optional(),
   type: z.enum([
@@ -104,12 +113,18 @@ export const opportunitySchema = z.object({
     country: z.string().optional(),
   }),
   salaryRange: z.object({
-    min: z.number().min(0),
-    max: z.number().min(0),
+    // 🔥 FIXED: Added coercion here too for future safety
+    min: z.coerce.number().min(0, "Minimum salary must be 0 or more"),
+    max: z.coerce.number().min(0, "Maximum salary must be 0 or more"),
     currency: z.string().default("INR"),
   }),
   requiredSkills: z.array(z.string()).min(1, "At least one skill is required"),
-  requiredExperience: z.number().min(0).optional(),
+  // 🔥 FIXED: Added coercion here too
+  requiredExperience: z.preprocess(
+    (val) =>
+      val === "" || val === undefined || val === null ? undefined : Number(val),
+    z.number().min(0).optional(),
+  ),
   requirements: z.array(z.string()).optional(),
   responsibilities: z.array(z.string()).optional(),
   benefits: z.array(z.string()).optional(),

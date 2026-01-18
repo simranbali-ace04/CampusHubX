@@ -16,18 +16,24 @@ export const collegesApi = {
     return response.data;
   },
 
-  // 🔥 FIXED: Now accepts 'id' and uses correct string interpolation
   getStudents: async (id, filters = {}) => {
     const params = new URLSearchParams(filters);
     const response = await apiClient.get(
-      `/api/colleges/${id}/students?${params}`
+      `/api/colleges/${id}/students?${params}`,
     );
     return response.data;
   },
 
-  // 🔥 FIXED: Corrected URL to match backend route (/verifications/pending)
+  // 👉 2. Add this NEW function
+  getDashboardStats: async () => {
+    const response = await apiClient.get("/api/colleges/stats");
+    return response.data;
+  },
+
   getPendingVerifications: async () => {
     const response = await apiClient.get("/api/colleges/verifications/pending");
     return response.data;
   },
 };
+
+export default collegesApi;

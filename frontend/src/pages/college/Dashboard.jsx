@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "../../hooks/useAuth"; // 1. Import useAuth
-//import { collegesApi } from "../../services/api/colleges";
-import { achievementsApi } from "../../services/api/achievements";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
+import { collegesApi } from "../../services/api/colleges"; // Ensure this is imported
 import Card from "../../components/common/Card/Card";
 import Spinner from "../../components/common/Spinner/Spinner";
 import {
@@ -10,57 +10,84 @@ import {
   HiClock,
   HiAcademicCap,
 } from "react-icons/hi";
-import { Link } from "react-router-dom";
 import { ROUTES } from "../../utils/constants";
 import Badge from "../../components/common/Badge/Badge";
 import { formatDate } from "../../utils/helpers";
 
 const Dashboard = () => {
-  const { user } = useAuth(); // 2. Get the logged-in user
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalStudents: 0,
     verifiedStudents: 0,
     pendingVerifications: 0,
     verifiedAchievements: 0,
   });
-  const [pendingVerifications, setPendingVerifications] = useState([]);
+  const [pendingItems, setPendingItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchData();
-  }, [user]); // 3. Re-run when user loads
+    if (user?.profile?._id) {
+      fetchData();
+    }
+  }, [user]);
 
   const fetchData = async () => {
-    // 4. Safety check: Don't fetch if profile isn't loaded yet
-    if (!user?.profile?._id) return;
-
     setLoading(true);
     try {
-      const [verificationsResponse] = await Promise.all([
-  achievementsApi.getPending(),
-  // collegesApi.getStudents(user.profile._id, { limit: 1 }), // <-- TEMPORARILY DISABLED
-]);
+      // 👉 3. Call the new stats endpoint here
+      const [statsRes, verificationsRes] = await Promise.all([
+        collegesApi.getDashboardStats(),
+        collegesApi.getPendingVerifications(),
+      ]);
 
+      // Update Stats with real data from backend
+      if (statsRes?.success) {
+        setStats(statsRes.data);
+      }
 
-      // 6. Extract the total count from pagination metadata
-      const totalStudents = 2; // demo value so your dashboard doesn't break
-
-      const pendingList = verificationsResponse?.success
-        ? verificationsResponse.data || []
+      // Process Pending List
+      const pendingAchievements = verificationsRes?.success
+        ? verificationsRes.data.achievements?.data || []
+        : [];
+      const pendingProjects = verificationsRes?.success
+        ? verificationsRes.data.projects?.data || []
         : [];
 
-      setStats({
-        totalStudents: totalStudents, // 7. Update the state with real count
-        verifiedStudents: 0, // Backend filter for 'verified' not yet implemented in controller
+      // Combine and sort pending items
+      const combined = [
+        ...pendingAchievements.map((item) => ({
+          ...item,
+          type: "achievement",
+          displayTitle: item.title,
+        })),
+        ...pendingProjects.map((item) => ({
+          ...item,
+          type: "project",
+          displayTitle: item.title,
+        })),
+      ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-        verifiedAchievements: 0,
-      });
-
-      setPendingVerifications(pendingList);
+      setPendingItems(combined);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCardClick = (title) => {
+    switch (title) {
+      case "Total Students":
+      case "Verified Students":
+        navigate(ROUTES.COLLEGE_STUDENTS);
+        break;
+      case "Pending Verifications":
+      case "Verified Achievements":
+        navigate(ROUTES.COLLEGE_VERIFICATIONS);
+        break;
+      default:
+        break;
     }
   };
 
@@ -70,24 +97,28 @@ const Dashboard = () => {
       value: stats.totalStudents,
       icon: HiUserGroup,
       color: "bg-blue-500",
+      clickable: true,
     },
     {
       title: "Verified Students",
       value: stats.verifiedStudents,
       icon: HiCheckCircle,
       color: "bg-green-500",
+      clickable: true,
     },
     {
       title: "Pending Verifications",
       value: stats.pendingVerifications,
       icon: HiClock,
       color: "bg-yellow-500",
+      clickable: true,
     },
     {
       title: "Verified Achievements",
       value: stats.verifiedAchievements,
       icon: HiAcademicCap,
       color: "bg-purple-500",
+      clickable: true,
     },
   ];
 
@@ -101,35 +132,50 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">College Dashboard</h1>
         <p className="mt-2 text-gray-600">Manage students and verifications</p>
       </div>
 
+      {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat, index) => (
-          <Card key={index} hover>
-            <Card.Body>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">{stat.title}</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
-                    {stat.value}
-                  </p>
+          <div
+            key={index}
+            onClick={() => stat.clickable && handleCardClick(stat.title)}
+            className={
+              stat.clickable
+                ? "cursor-pointer transition-transform hover:scale-105"
+                : ""
+            }
+          >
+            <Card hover={stat.clickable}>
+              <Card.Body>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">{stat.title}</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                      {stat.value}
+                    </p>
+                  </div>
+                  <div className={`${stat.color} p-3 rounded-lg`}>
+                    <stat.icon className="w-6 h-6 text-white" />
+                  </div>
                 </div>
-                <div className={`${stat.color} p-3 rounded-lg`}>
-                  <stat.icon className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </Card.Body>
-          </Card>
+              </Card.Body>
+            </Card>
+          </div>
         ))}
       </div>
 
+      {/* Recent Pending Verifications List */}
       <Card>
         <Card.Header>
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Pending Verifications</h2>
+            <h2 className="text-xl font-semibold">
+              Recent Pending Verifications
+            </h2>
             <Link
               to={ROUTES.COLLEGE_VERIFICATIONS}
               className="text-primary-600 hover:text-primary-700 text-sm font-medium"
@@ -139,27 +185,32 @@ const Dashboard = () => {
           </div>
         </Card.Header>
         <Card.Body>
-          {pendingVerifications.length > 0 ? (
+          {pendingItems.length > 0 ? (
             <div className="space-y-4">
-              {pendingVerifications.slice(0, 5).map((verification) => (
+              {pendingItems.slice(0, 5).map((item) => (
                 <div
-                  key={verification._id}
+                  key={item._id}
                   className="border-b border-gray-200 pb-4 last:border-0 last:pb-0"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="text-lg font-medium text-gray-900">
-                        {verification.title}
+                        {item.displayTitle}
                       </h3>
                       <p className="text-sm text-gray-600 mt-1">
-                        Student: {verification.studentId?.firstName}{" "}
-                        {verification.studentId?.lastName}
+                        Student: {item.studentId?.firstName}{" "}
+                        {item.studentId?.lastName}
                       </p>
                       <p className="text-sm text-gray-500 mt-1">
-                        Submitted: {formatDate(verification.createdAt)}
+                        Submitted: {formatDate(item.createdAt)}
                       </p>
                     </div>
-                    <Badge variant="warning">Pending</Badge>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="info" className="capitalize">
+                        {item.type}
+                      </Badge>
+                      <Badge variant="warning">Pending</Badge>
+                    </div>
                   </div>
                 </div>
               ))}
