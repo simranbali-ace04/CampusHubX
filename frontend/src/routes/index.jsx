@@ -1,3 +1,5 @@
+// fileName: frontend/src/routes/index.jsx
+
 import { Routes, Route, Navigate } from "react-router-dom";
 import PrivateRoute from "./PrivateRoute";
 import RoleRoute from "./RoleRoute";
@@ -17,13 +19,14 @@ import StudentSkills from "../pages/student/Skills";
 import StudentProjects from "../pages/student/Projects";
 import StudentAchievements from "../pages/student/Achievements";
 import StudentProfile from "../pages/student/Profile";
-// --- 1. ADD THIS IMPORT ---
 import OpportunityDetails from "../pages/student/OpportunityDetails";
 import ApplicationDetails from "../pages/student/ApplicationDetails";
 
 // College pages
 import CollegeDashboard from "../pages/college/Dashboard";
 import CollegeStudents from "../pages/college/Students";
+// 👇 1. IMPORT COLLEGE PROFILE
+import CollegeProfile from "../pages/college/Profile";
 
 // Recruiter pages
 import RecruiterDashboard from "../pages/recruiter/Dashboard";
@@ -31,6 +34,7 @@ import CreateOpportunity from "../pages/recruiter/CreateOpportunity";
 import RecruiterOpportunities from "../pages/recruiter/Opportunities";
 import RecruiterApplications from "../pages/recruiter/Applications";
 import RecruiterProfile from "../pages/recruiter/Profile";
+import RecruiterApplicationDetails from "../pages/recruiter/ApplicationDetails";
 
 // Error pages
 const NotFound = () => (
@@ -64,7 +68,6 @@ const AppRoutes = () => {
           </RoleRoute>
         }
       />
-      {/* 2. ADD THIS NEW ROUTE */}
       <Route
         path={`${ROUTES.STUDENT_APPLICATIONS}/:id`}
         element={
@@ -76,7 +79,6 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Student Opportunities List */}
       <Route
         path={ROUTES.STUDENT_OPPORTUNITIES}
         element={
@@ -88,8 +90,6 @@ const AppRoutes = () => {
         }
       />
 
-      {/* --- 2. ADD THIS ROUTE FOR DETAILS PAGE --- */}
-      {/* This handles /student/opportunities/123 */}
       <Route
         path={`${ROUTES.STUDENT_OPPORTUNITIES}/:id`}
         element={
@@ -175,6 +175,18 @@ const AppRoutes = () => {
         }
       />
 
+      {/* 👇 2. ADDED COLLEGE PROFILE ROUTE */}
+      <Route
+        path={ROUTES.COLLEGE_PROFILE}
+        element={
+          <RoleRoute allowedRoles={[ROLES.COLLEGE]}>
+            <Layout>
+              <CollegeProfile />
+            </Layout>
+          </RoleRoute>
+        }
+      />
+
       {/* Recruiter routes */}
       <Route
         path={ROUTES.RECRUITER_DASHBOARD}
@@ -226,6 +238,17 @@ const AppRoutes = () => {
           <RoleRoute allowedRoles={[ROLES.RECRUITER]}>
             <Layout>
               <RecruiterApplications />
+            </Layout>
+          </RoleRoute>
+        }
+      />
+
+      <Route
+        path={`${ROUTES.RECRUITER_APPLICATIONS}/:id`}
+        element={
+          <RoleRoute allowedRoles={[ROLES.RECRUITER]}>
+            <Layout>
+              <RecruiterApplicationDetails />
             </Layout>
           </RoleRoute>
         }

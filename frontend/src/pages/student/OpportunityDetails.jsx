@@ -1,6 +1,9 @@
+// fileName: frontend/src/pages/student/OpportunityDetails.jsx
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import { useForm } from "react-hook-form"; // Import React Hook Form
 import {
   FaMapMarkerAlt,
   FaBriefcase,
@@ -10,6 +13,7 @@ import {
   FaArrowLeft,
   FaCheckCircle,
   FaGlobe,
+  FaPaperPlane,
 } from "react-icons/fa";
 import { opportunitiesApi } from "../../services/api/opportunities";
 import { applicationsApi } from "../../services/api/applications";
@@ -17,6 +21,9 @@ import Spinner from "../../components/common/Spinner/Spinner";
 import Card from "../../components/common/Card/Card";
 import Button from "../../components/common/Button/Button";
 import Badge from "../../components/common/Badge/Badge";
+import Modal from "../../components/common/Modal/Modal"; // Import Modal
+import Input from "../../components/common/Input/Input"; // Import Input
+import Textarea from "../../components/common/Textarea/Textarea"; // Import Textarea
 import { formatDate, formatSalaryRange } from "../../utils/helpers";
 
 const OpportunityDetails = () => {
@@ -24,8 +31,16 @@ const OpportunityDetails = () => {
   const navigate = useNavigate();
   const [opportunity, setOpportunity] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [applying, setApplying] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // Modal state
+
+  // Form setup
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm();
 
   useEffect(() => {
     fetchData();
@@ -41,8 +56,6 @@ const OpportunityDetails = () => {
       try {
         const appRes = await applicationsApi.getMyApplications();
         const apps = appRes.data?.data || appRes.data || [];
-
-        // ✅ FIX: Check if application exists AND is NOT withdrawn
         const isApplied = apps.some(
           (app) =>
             (app.opportunityId?._id === id || app.opportunityId === id) &&
@@ -60,20 +73,25 @@ const OpportunityDetails = () => {
     }
   };
 
-  const handleApply = async () => {
-    setApplying(true);
+  const onSubmitApplication = async (data) => {
     try {
-      const response = await applicationsApi.create({ opportunityId: id });
+      const payload = {
+        opportunityId: id,
+        coverLetter: data.coverLetter,
+        resumeUrl: data.resumeUrl,
+      };
+
+      const response = await applicationsApi.create(payload);
       if (response.success) {
         toast.success("Application submitted successfully!");
         setHasApplied(true);
+        setIsModalOpen(false);
+        reset();
       }
     } catch (error) {
       const msg =
         error.response?.data?.error?.message || "Failed to submit application";
       toast.error(msg);
-    } finally {
-      setApplying(false);
     }
   };
 
@@ -99,6 +117,7 @@ const OpportunityDetails = () => {
         <FaArrowLeft className="mr-2" /> Back to Opportunities
       </button>
 
+      {/* Header Section */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
         <div className="flex flex-col md:flex-row justify-between items-start gap-6">
           <div className="flex gap-6">
@@ -133,12 +152,10 @@ const OpportunityDetails = () => {
               size="lg"
               variant={hasApplied ? "success" : "primary"}
               className="w-full shadow-md"
-              onClick={handleApply}
-              disabled={applying || hasApplied}
+              onClick={() => !hasApplied && setIsModalOpen(true)} // Open Modal
+              disabled={hasApplied}
             >
-              {applying ? (
-                <Spinner size="sm" color="white" />
-              ) : hasApplied ? (
+              {hasApplied ? (
                 <>
                   <FaCheckCircle className="mr-2" /> Applied
                 </>
@@ -294,6 +311,66 @@ const OpportunityDetails = () => {
           </Card>
         </div>
       </div>
+
+      {/* Application Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={`Apply for ${opportunity.title}`}
+        size="lg"
+      >
+        <form
+          onSubmit={handleSubmit(onSubmitApplication)}
+          className="space-y-6"
+        >
+          <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800 mb-4">
+            <h4 className="font-semibold mb-1">
+              Make your application stand out!
+            </h4>
+            <p>
+              Ensure your profile skills match the job requirements to increase
+              your match score.
+            </p>
+          </div>
+
+          <Textarea
+            label="Cover Letter"
+            placeholder="Introduce yourself and explain why you're a good fit for this role..."
+            rows={6}
+            {...register("coverLetter", {
+              required: "Cover letter is required",
+            })}
+            error={errors.coverLetter?.message}
+          />
+
+          <Input
+            label="Resume / Portfolio URL"
+            placeholder="https://drive.google.com/..."
+            {...register("resumeUrl", {
+              required: "Resume URL is required",
+              pattern: {
+                value: /^(http|https):\/\/[^ "]+$/,
+                message: "Please enter a valid URL",
+              },
+            })}
+            error={errors.resumeUrl?.message}
+            hint="Provide a link to your Resume (Google Drive, LinkedIn, Portfolio)"
+          />
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" loading={isSubmitting} className="px-8">
+              <FaPaperPlane className="mr-2" /> Submit Application
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
