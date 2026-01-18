@@ -1,8 +1,8 @@
-import apiClient from './client';
+import apiClient from "./client";
 
 export const recruitersApi = {
   getAll: async () => {
-    const response = await apiClient.get('/api/recruiters');
+    const response = await apiClient.get("/api/recruiters");
     return response.data;
   },
 
@@ -11,18 +11,27 @@ export const recruitersApi = {
     return response.data;
   },
 
-  updateProfile: async (data) => {
-    const response = await apiClient.put('/api/recruiters/profile', data);
+  getProfile: async () => {
+    const response = await apiClient.get("/api/recruiters/profile");
     return response.data;
   },
 
+  updateProfile: async (data) => {
+    const response = await apiClient.put("/api/recruiters/profile", data);
+    return response.data;
+  },
   getDashboard: async () => {
-    const response = await apiClient.get('/api/recruiters/dashboard');
+    const response = await apiClient.get("/api/recruiters/dashboard");
+    return response.data;
+  },
+
+  getMyOpportunities: async () => {
+    const response = await apiClient.get("/api/recruiters/opportunities");
     return response.data;
   },
 
   getAnalytics: async () => {
-    const response = await apiClient.get('/api/recruiters/analytics');
+    const response = await apiClient.get("/api/recruiters/analytics");
     return response.data;
   },
 };
