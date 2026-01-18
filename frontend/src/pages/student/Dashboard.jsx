@@ -42,7 +42,10 @@ const Dashboard = () => {
         }
 
         if (matchesResponse?.success) {
-          setMatches(matchesResponse.data || []);
+          // 🔍 FIX: The API returns { data: [...], pagination: {...} }
+          // We must access .data.data to get the actual array
+          console.log("Matches received:", matchesResponse.data);
+          setMatches(matchesResponse.data?.data || []);
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -69,28 +72,28 @@ const Dashboard = () => {
       value: stats.totalApplications,
       icon: HiBriefcase,
       color: "bg-blue-500",
-      link: ROUTES.STUDENT_APPLICATIONS, // 👈 Navigate to Applications
+      link: ROUTES.STUDENT_APPLICATIONS,
     },
     {
       title: "Pending Applications",
       value: stats.pendingApplications,
       icon: HiClipboardCheck,
       color: "bg-yellow-500",
-      link: `${ROUTES.STUDENT_APPLICATIONS}?status=pending`, // 👈 Navigate to Applications (filtered)
+      link: `${ROUTES.STUDENT_APPLICATIONS}?status=pending`,
     },
     {
       title: "Matched Opportunities",
       value: stats.matchedOpportunities,
       icon: HiStar,
       color: "bg-green-500",
-      link: ROUTES.STUDENT_OPPORTUNITIES, // 👈 Navigate to Opportunities
+      link: ROUTES.STUDENT_OPPORTUNITIES,
     },
     {
       title: "Profile Completion",
       value: `${stats.profileCompletion}%`,
       icon: HiUser,
       color: "bg-purple-500",
-      link: "/student/profile", // 👈 Navigate to Profile
+      link: "/student/profile",
     },
   ];
 
@@ -106,7 +109,6 @@ const Dashboard = () => {
       {/* STATS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat, index) => (
-          // 1. WRAP CARD IN LINK
           <Link
             key={index}
             to={stat.link}

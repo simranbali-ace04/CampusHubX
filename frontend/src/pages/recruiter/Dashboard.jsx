@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { recruitersApi } from "../../services/api/recruiters";
-import { applicationsApi } from "../../services/api/applications";
+// Removed unnecessary applicationsApi import
 import Card from "../../components/common/Card/Card";
 import Spinner from "../../components/common/Spinner/Spinner";
 import Button from "../../components/common/Button/Button";
@@ -34,23 +34,22 @@ const Dashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [dashboardResponse, applicationsResponse] = await Promise.all([
-        recruitersApi.getDashboard(),
-        applicationsApi.getAll({ limit: 5 }),
-      ]);
+      // FIX: Only call getDashboard (it already includes recentApplications)
+      const dashboardResponse = await recruitersApi.getDashboard();
 
       if (dashboardResponse?.success) {
         const statsData = dashboardResponse.data?.stats || {};
+
         setStats({
           activeOpportunities: statsData.activeOpportunities || 0,
           totalApplications: statsData.totalApplications || 0,
           pendingReviews: statsData.pendingApplications || 0,
           averageMatchScore: statsData.averageMatchScore || 0,
         });
-      }
 
-      if (applicationsResponse?.success) {
-        setRecentApplications(applicationsResponse.data || []);
+        // FIX: Use the recentApplications directly from the dashboard response
+        // This avoids the pagination structure mismatch entirely
+        setRecentApplications(dashboardResponse.data?.recentApplications || []);
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -66,25 +65,23 @@ const Dashboard = () => {
         navigate(ROUTES.RECRUITER_OPPORTUNITIES);
         break;
       case "Total Applications":
-        // Go to applications page with NO filter (shows all)
         navigate(ROUTES.RECRUITER_APPLICATIONS);
         break;
       case "Pending Reviews":
-        // Go to applications page with FILTER for pending
         navigate(`${ROUTES.RECRUITER_APPLICATIONS}?status=pending`);
         break;
       default:
         break;
     }
   };
-  
+
   const statCards = [
     {
       title: "Active Opportunities",
       value: stats.activeOpportunities,
       icon: HiBriefcase,
       color: "bg-blue-500",
-      clickable: true, // Mark as clickable
+      clickable: true,
     },
     {
       title: "Total Applications",
@@ -105,7 +102,7 @@ const Dashboard = () => {
       value: `${stats.averageMatchScore}%`,
       icon: HiChartBar,
       color: "bg-purple-500",
-      clickable: false, // Usually just a stat, but can be clickable if you have a page for it
+      clickable: false,
     },
   ];
 
@@ -142,7 +139,6 @@ const Dashboard = () => {
         {statCards.map((stat, index) => (
           <div
             key={index}
-            // --- NEW: Add Click Handler & Pointer Cursor ---
             onClick={() => stat.clickable && handleCardClick(stat.title)}
             className={
               stat.clickable

@@ -151,13 +151,21 @@ export const getDashboard = asyncHandler(async (req, res) => {
   ]);
 
   // Match Calculation Logic
-  const matches = await Match.find({
+  // FIX: Query Application collection instead of Match collection
+  // The Application model stores the matchScore at the time of application
+  const applicationsWithScores = await Application.find({
     opportunityId: { $in: opportunityIds },
-  }).select("score");
+    matchScore: { $exists: true },
+  }).select("matchScore");
 
-  const totalScore = matches.reduce((sum, match) => sum + match.score, 0);
+  const totalScore = applicationsWithScores.reduce(
+    (sum, app) => sum + (app.matchScore || 0),
+    0,
+  );
   const averageMatchScore =
-    matches.length > 0 ? Math.round(totalScore / matches.length) : 0;
+    applicationsWithScores.length > 0
+      ? Math.round(totalScore / applicationsWithScores.length)
+      : 0;
 
   const recentApplications = await Application.find({
     opportunityId: { $in: opportunityIds },

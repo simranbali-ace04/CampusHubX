@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { applicationsApi } from "../../services/api/applications";
 import { toast } from "react-hot-toast";
 import Card from "../../components/common/Card/Card";
 import Badge from "../../components/common/Badge/Badge";
 import Spinner from "../../components/common/Spinner/Spinner";
 import { formatDate, getStatusColor } from "../../utils/helpers";
+import { ROUTES } from "../../utils/constants";
 import {
   HiDownload,
   HiFilter,
@@ -17,6 +18,7 @@ import {
 
 const Applications = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState(
@@ -181,6 +183,16 @@ const Applications = () => {
 
                 {/* 4. Action Buttons (Updated) */}
                 <div className="flex items-center gap-3 w-full lg:w-auto justify-end border-t lg:border-t-0 border-gray-100 pt-4 lg:pt-0 mt-4 lg:mt-0">
+                  {/* View Profile Button */}
+                  <button
+                    onClick={() =>
+                      navigate(`${ROUTES.RECRUITER_APPLICATIONS}/${app._id}`)
+                    }
+                    className="px-3 py-2 text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-sm font-medium border border-gray-200"
+                  >
+                    View Profile
+                  </button>
+
                   {/* Resume Link */}
                   {app.resumeUrl && (
                     <a

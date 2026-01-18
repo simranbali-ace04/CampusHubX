@@ -1,4 +1,3 @@
-// ... (imports remain the same)
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -30,9 +29,11 @@ const Opportunities = () => {
   const [appliedIds, setAppliedIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [applyingId, setApplyingId] = useState(null);
+
+  // ✅ FIX: Renamed 'location' to 'locationType' to match backend expectation
   const [filters, setFilters] = useState({
     type: "",
-    location: "",
+    locationType: "",
     search: "",
   });
 
@@ -50,7 +51,6 @@ const Opportunities = () => {
         const appResponse = await applicationsApi.getMyApplications();
         const apps = appResponse.data?.data || appResponse.data || [];
 
-        // ✅ FIX: Filter out withdrawn apps so the button shows "Apply" again
         const ids = new Set(
           apps
             .filter((app) => app.status !== "withdrawn")
@@ -120,11 +120,12 @@ const Opportunities = () => {
               })),
             ]}
           />
+          {/* ✅ FIX: Updated value and onChange to use locationType */}
           <Select
             placeholder="All Locations"
-            value={filters.location}
+            value={filters.locationType}
             onChange={(e) =>
-              setFilters({ ...filters, location: e.target.value })
+              setFilters({ ...filters, locationType: e.target.value })
             }
             options={[
               { value: "", label: "All Locations" },
