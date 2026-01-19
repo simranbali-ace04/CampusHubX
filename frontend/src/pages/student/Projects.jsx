@@ -12,8 +12,10 @@ import Input from "../../components/common/Input/Input";
 import Textarea from "../../components/common/Textarea/Textarea";
 import toast from "react-hot-toast";
 import { formatDate } from "../../utils/helpers";
+import { useAuth } from "../../hooks/useAuth"; // ✅ Import useAuth
 
 const Projects = () => {
+  const { user } = useAuth(); // ✅ Get current user
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -29,17 +31,19 @@ const Projects = () => {
   });
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    if (user?.profile?._id) {
+      fetchProjects();
+    }
+  }, [user]);
 
-  // Locate this function
   const fetchProjects = async () => {
     setLoading(true);
     try {
-      const response = await projectsApi.getAll();
+      // ✅ FIX: Pass studentId to filter only MY projects
+      const response = await projectsApi.getAll({
+        studentId: user.profile._id,
+      });
       if (response.success) {
-        // 🔴 OLD: setProjects(response.data || []);
-        // 🟢 NEW: Extract the 'data' array
         setProjects(response.data?.data || []);
       }
     } catch (error) {
@@ -51,22 +55,17 @@ const Projects = () => {
 
   const onSubmit = async (data) => {
     try {
-      // 🛠️ FIX: Create a clean object by removing empty strings
-      // This prevents sending "" to the backend which triggers the 422 Joi validation error
       const cleanData = {
         ...data,
         githubUrl: data.githubUrl || undefined,
         liveUrl: data.liveUrl || undefined,
-        // If you add date inputs later, handle them here too:
-        // startDate: data.startDate || undefined,
-        // endDate: data.endDate || undefined,
       };
 
       if (editingProject) {
-        await projectsApi.update(editingProject._id, cleanData); // Use cleanData
+        await projectsApi.update(editingProject._id, cleanData);
         toast.success("Project updated successfully");
       } else {
-        await projectsApi.create(cleanData); // Use cleanData
+        await projectsApi.create(cleanData);
         toast.success("Project created successfully");
       }
       fetchProjects();
@@ -74,9 +73,9 @@ const Projects = () => {
       setEditingProject(null);
       reset();
     } catch (error) {
-      console.error(error); // Helpful to see the exact backend error details
+      console.error(error);
       toast.error(
-        error.response?.data?.error?.message || "Failed to save project"
+        error.response?.data?.error?.message || "Failed to save project",
       );
     }
   };
@@ -138,9 +137,17 @@ const Projects = () => {
                     {formatDate(project.startDate)} -{" "}
                     {formatDate(project.endDate) || "Present"}
                   </span>
-                  {project.verifiedBy && (
+                  {project.verificationStatus === "verified" ? (
                     <Badge variant="success" size="sm">
                       Verified
+                    </Badge>
+                  ) : project.verificationStatus === "rejected" ? (
+                    <Badge variant="danger" size="sm">
+                      Rejected
+                    </Badge>
+                  ) : (
+                    <Badge variant="warning" size="sm">
+                      Pending
                     </Badge>
                   )}
                 </div>
