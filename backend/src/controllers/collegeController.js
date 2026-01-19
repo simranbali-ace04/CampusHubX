@@ -10,19 +10,13 @@ import Achievement from "../models/Achievement.js";
 import Project from "../models/Project.js";
 import { ACHIEVEMENT_STATUS } from "../utils/constants.js";
 
-/**
- * List colleges
- */
+// ... [Keep existing functions: getAllColleges, getCollegeById, updateOwnProfile, getDashboardStats, getCollegeStudents, getPendingVerifications, verifyStudentEnrollment] ...
+
 export const getAllColleges = asyncHandler(async (req, res) => {
   const { page, limit } = paginate(req.query.page, req.query.limit);
-
   const query = {};
-  if (req.query.verified === "true") {
-    query.verified = true;
-  }
-  if (req.query.search) {
-    query.$text = { $search: req.query.search };
-  }
+  if (req.query.verified === "true") query.verified = true;
+  if (req.query.search) query.$text = { $search: req.query.search };
 
   const total = await College.countDocuments(query);
   const colleges = await College.find(query)
@@ -42,69 +36,48 @@ export const getAllColleges = asyncHandler(async (req, res) => {
     );
 });
 
-/**
- * Get college by ID
- */
 export const getCollegeById = asyncHandler(async (req, res) => {
   const college = await College.findById(req.params.id).select(
     "-students -achievements",
   );
-
-  if (!college) {
+  if (!college)
     return res
       .status(404)
       .json(
         formatResponse(false, null, "College not found", { code: "NOT_FOUND" }),
       );
-  }
-
   res
     .status(200)
     .json(formatResponse(true, college, "College retrieved successfully"));
 });
 
-/**
- * Update own profile
- */
 export const updateOwnProfile = asyncHandler(async (req, res) => {
   const college = await College.findOne({ userId: req.user._id });
-
-  if (!college) {
+  if (!college)
     return res.status(404).json(
       formatResponse(false, null, "College profile not found", {
         code: "NOT_FOUND",
       }),
     );
-  }
 
-  // Don't allow updating verified status
   delete req.body.verified;
-  delete req.body.code; // Don't allow changing code
-
+  delete req.body.code;
   Object.assign(college, req.body);
   await college.save();
-
   res
     .status(200)
     .json(formatResponse(true, college, "Profile updated successfully"));
 });
 
-/**
- * Get college dashboard stats
- * @route GET /api/colleges/stats
- */
 export const getDashboardStats = asyncHandler(async (req, res) => {
   const college = await College.findOne({ userId: req.user._id });
-
-  if (!college) {
+  if (!college)
     return res.status(404).json(
       formatResponse(false, null, "College profile not found", {
         code: "NOT_FOUND",
       }),
     );
-  }
 
-  // Get all student IDs for this college to filter their achievements/projects
   const students = await Student.find({ collegeId: college._id }).select("_id");
   const studentIds = students.map((s) => s._id);
 
@@ -115,28 +88,19 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     pendingProjects,
     verifiedAchievements,
   ] = await Promise.all([
-    // 1. Total Students
     Student.countDocuments({ collegeId: college._id }),
-
-    // 2. Verified Students
     Student.countDocuments({
       collegeId: college._id,
       isVerifiedByCollege: true,
     }),
-
-    // 3. Pending Achievements
     Achievement.countDocuments({
       studentId: { $in: studentIds },
       verificationStatus: ACHIEVEMENT_STATUS.PENDING,
     }),
-
-    // 4. Pending Projects
     Project.countDocuments({
       studentId: { $in: studentIds },
       verifiedBy: { $exists: false },
     }),
-
-    // 5. Verified Achievements (Verified by THIS college)
     Achievement.countDocuments({
       verifiedBy: college._id,
       verificationStatus: "verified",
@@ -157,22 +121,16 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
   );
 });
 
-/**
- * Get college students
- */
 export const getCollegeStudents = asyncHandler(async (req, res) => {
   const college = await College.findOne({ userId: req.user._id });
-
-  if (!college) {
+  if (!college)
     return res.status(404).json(
       formatResponse(false, null, "College profile not found", {
         code: "NOT_FOUND",
       }),
     );
-  }
 
   const { page, limit } = paginate(req.query.page, req.query.limit);
-
   const query = { collegeId: college._id };
   const total = await Student.countDocuments(query);
   const students = await Student.find(query)
@@ -193,9 +151,6 @@ export const getCollegeStudents = asyncHandler(async (req, res) => {
     );
 });
 
-/**
- * Get pending verifications
- */
 export const getPendingVerifications = asyncHandler(async (req, res) => {
   const college = await College.findOne({ userId: req.user._id });
 
@@ -219,10 +174,15 @@ export const getPendingVerifications = asyncHandler(async (req, res) => {
     verificationStatus: ACHIEVEMENT_STATUS.PENDING,
   };
 
-  // Get unverified projects
+  // ✅ FIX: More robust query for pending projects
+  // Checks if status is explicitly 'pending' OR if the field is missing/null
   const projectsQuery = {
     studentId: { $in: studentIds },
-    verifiedBy: { $exists: false },
+    $or: [
+      { verificationStatus: "pending" },
+      { verificationStatus: { $exists: false } },
+      { verificationStatus: null },
+    ],
   };
 
   const [achievementsTotal, projectsTotal] = await Promise.all([
@@ -262,29 +222,24 @@ export const getPendingVerifications = asyncHandler(async (req, res) => {
   );
 });
 
-/**
- * Verify student enrollment
- */
+// ... [Keep verifyStudentEnrollment and other functions] ...
+
 export const verifyStudentEnrollment = asyncHandler(async (req, res) => {
   const college = await College.findOne({ userId: req.user._id });
-
-  if (!college) {
+  if (!college)
     return res.status(404).json(
       formatResponse(false, null, "College profile not found", {
         code: "NOT_FOUND",
       }),
     );
-  }
 
   const student = await Student.findById(req.params.studentId);
-
-  if (!student) {
+  if (!student)
     return res
       .status(404)
       .json(
         formatResponse(false, null, "Student not found", { code: "NOT_FOUND" }),
       );
-  }
 
   if (
     student.collegeId &&
@@ -297,24 +252,71 @@ export const verifyStudentEnrollment = asyncHandler(async (req, res) => {
     );
   }
 
-  // 👉 IMPORTANT PART — this makes verification STICK
   student.isVerifiedByCollege = true;
-
-  // If student had no college before, attach it
-  if (!student.collegeId) {
-    student.collegeId = college._id;
-  }
-
+  if (!student.collegeId) student.collegeId = college._id;
   await student.save();
 
-  res.status(200).json(
-    formatResponse(
-      true,
-      {
-        _id: student._id,
-        isVerifiedByCollege: student.isVerifiedByCollege,
-      },
-      "Student verified successfully",
-    ),
-  );
+  res
+    .status(200)
+    .json(
+      formatResponse(
+        true,
+        { _id: student._id, isVerifiedByCollege: student.isVerifiedByCollege },
+        "Student verified successfully",
+      ),
+    );
 });
+
+// ✅ ADDED THIS FUNCTION
+export const getStudentProfileForCollege = asyncHandler(async (req, res) => {
+  const college = await College.findOne({ userId: req.user._id });
+  if (!college)
+    return res
+      .status(404)
+      .json(formatResponse(false, null, "College profile not found"));
+
+  const student = await Student.findById(req.params.studentId).populate(
+    "skills",
+  );
+  if (!student)
+    return res
+      .status(404)
+      .json(formatResponse(false, null, "Student not found"));
+
+  if (
+    student.collegeId &&
+    student.collegeId.toString() !== college._id.toString()
+  ) {
+    return res.status(403).json(formatResponse(false, null, "Access denied"));
+  }
+
+  const [projects, achievements] = await Promise.all([
+    Project.find({ studentId: student._id }).sort({ createdAt: -1 }),
+    Achievement.find({ studentId: student._id }).sort({ createdAt: -1 }),
+  ]);
+
+  const fullProfile = {
+    ...student.toObject(),
+    projects,
+    achievements,
+  };
+
+  res
+    .status(200)
+    .json(
+      formatResponse(
+        true,
+        fullProfile,
+        "Student profile retrieved successfully",
+      ),
+    );
+});
+// // Ensure all functions are exported properly
+// export {
+//   getAllColleges,
+//   getCollegeById,
+//   updateOwnProfile,
+//   getDashboardStats,
+//   getCollegeStudents,
+//   verifyStudentEnrollment,
+// };

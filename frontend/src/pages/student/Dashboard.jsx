@@ -44,7 +44,7 @@ const Dashboard = () => {
         if (matchesResponse?.success) {
           // 🔍 FIX: The API returns { data: [...], pagination: {...} }
           // We must access .data.data to get the actual array
-          console.log("Matches received:", matchesResponse.data);
+          // console.log("Matches received:", matchesResponse.data);
           setMatches(matchesResponse.data?.data || []);
         }
       } catch (error) {

@@ -9,7 +9,7 @@ import {
   HiEye,
 } from "react-icons/hi";
 
-import axios from "../../services/api/client"; // Keeping direct axios for the verify call not in service yet
+import axios from "../../services/api/client";
 import { collegesApi } from "../../services/api/colleges";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -35,8 +35,10 @@ export default function Verifications() {
 
       try {
         setLoading(true);
-        // Reuse the existing service method
-        const res = await collegesApi.getStudents(collegeId, { limit: 1000 });
+        // ✅ FIX: Use 'getAllStudents' to match the service
+        const res = await collegesApi.getAllStudents(collegeId, {
+          limit: 1000,
+        });
 
         const list = Array.isArray(res.data?.data)
           ? res.data.data
@@ -59,7 +61,8 @@ export default function Verifications() {
   const handleApprove = async (studentId) => {
     setVerifyingId(studentId);
     try {
-      await axios.post(`/api/colleges/verify-student/${studentId}`);
+      // ✅ FIX: Use the service method instead of raw axios if possible, or keep raw axios but ensure route is correct
+      await collegesApi.verifyStudent(studentId, { isVerifiedByCollege: true });
 
       toast.success("Student verified successfully!");
 

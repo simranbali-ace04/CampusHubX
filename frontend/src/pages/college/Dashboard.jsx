@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
-import { collegesApi } from "../../services/api/colleges"; // Ensure this is imported
+import { collegesApi } from "../../services/api/colleges";
 import Card from "../../components/common/Card/Card";
 import Spinner from "../../components/common/Spinner/Spinner";
 import {
@@ -27,7 +27,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user?.profile?._id) {
+    if (user?.role === "college") {
       fetchData();
     }
   }, [user]);
@@ -35,39 +35,59 @@ const Dashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 👉 3. Call the new stats endpoint here
-      const [statsRes, verificationsRes] = await Promise.all([
+      // ✅ FIX: Fetch Stats and Pending Verifications (Single Secure Call)
+      const [statsRes, verificationsRes] = await Promise.allSettled([
         collegesApi.getDashboardStats(),
         collegesApi.getPendingVerifications(),
       ]);
 
-      // Update Stats with real data from backend
-      if (statsRes?.success) {
-        setStats(statsRes.data);
+      // 1. Handle Stats
+      if (statsRes.status === "fulfilled" && statsRes.value.success) {
+        setStats(statsRes.value.data);
       }
 
-      // Process Pending List
-      const pendingAchievements = verificationsRes?.success
-        ? verificationsRes.data.achievements?.data || []
-        : [];
-      const pendingProjects = verificationsRes?.success
-        ? verificationsRes.data.projects?.data || []
-        : [];
+      // 2. Handle Pending Items (Securely filtered by backend)
+      let combined = [];
 
-      // Combine and sort pending items
-      const combined = [
-        ...pendingAchievements.map((item) => ({
-          ...item,
-          type: "achievement",
-          displayTitle: item.title,
-        })),
-        ...pendingProjects.map((item) => ({
-          ...item,
-          type: "project",
-          displayTitle: item.title,
-        })),
-      ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      if (
+        verificationsRes.status === "fulfilled" &&
+        verificationsRes.value.success
+      ) {
+        const data = verificationsRes.value.data;
 
+        // Extract Achievements
+        if (data.achievements && Array.isArray(data.achievements.data)) {
+          combined = [
+            ...combined,
+            ...data.achievements.data.map((item) => ({
+              ...item,
+              type: "achievement",
+              displayTitle: item.title,
+              studentName: item.studentId
+                ? `${item.studentId.firstName} ${item.studentId.lastName}`
+                : "Unknown Student",
+            })),
+          ];
+        }
+
+        // Extract Projects
+        if (data.projects && Array.isArray(data.projects.data)) {
+          combined = [
+            ...combined,
+            ...data.projects.data.map((item) => ({
+              ...item,
+              type: "project",
+              displayTitle: item.title,
+              studentName: item.studentId
+                ? `${item.studentId.firstName} ${item.studentId.lastName}`
+                : "Unknown Student",
+            })),
+          ];
+        }
+      }
+
+      // Sort by newest first
+      combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setPendingItems(combined);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -94,28 +114,28 @@ const Dashboard = () => {
   const statCards = [
     {
       title: "Total Students",
-      value: stats.totalStudents,
+      value: stats.totalStudents || 0,
       icon: HiUserGroup,
       color: "bg-blue-500",
       clickable: true,
     },
     {
       title: "Verified Students",
-      value: stats.verifiedStudents,
+      value: stats.verifiedStudents || 0,
       icon: HiCheckCircle,
       color: "bg-green-500",
       clickable: true,
     },
     {
       title: "Pending Verifications",
-      value: stats.pendingVerifications,
+      value: stats.pendingVerifications || pendingItems.length,
       icon: HiClock,
       color: "bg-yellow-500",
       clickable: true,
     },
     {
       title: "Verified Achievements",
-      value: stats.verifiedAchievements,
+      value: stats.verifiedAchievements || 0,
       icon: HiAcademicCap,
       color: "bg-purple-500",
       clickable: true,
@@ -198,10 +218,12 @@ const Dashboard = () => {
                         {item.displayTitle}
                       </h3>
                       <p className="text-sm text-gray-600 mt-1">
-                        Student: {item.studentId?.firstName}{" "}
-                        {item.studentId?.lastName}
+                        Student:{" "}
+                        <span className="font-semibold">
+                          {item.studentName}
+                        </span>
                       </p>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 mt-1">
                         Submitted: {formatDate(item.createdAt)}
                       </p>
                     </div>
@@ -209,7 +231,6 @@ const Dashboard = () => {
                       <Badge variant="info" className="capitalize">
                         {item.type}
                       </Badge>
-                      <Badge variant="warning">Pending</Badge>
                     </div>
                   </div>
                 </div>

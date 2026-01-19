@@ -1,13 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import {
-  HiSearch,
-  HiEye,
-  HiCheckCircle,
-  HiUserGroup,
-  HiOutlineEmojiSad,
-} from "react-icons/hi";
+import { HiSearch, HiEye, HiCheckCircle, HiUserGroup } from "react-icons/hi";
 
 import { collegesApi } from "../../services/api/colleges";
 import { useAuth } from "../../hooks/useAuth";
@@ -28,12 +22,14 @@ export default function Students() {
 
   useEffect(() => {
     const fetchStudents = async () => {
+      // Ensure we have a profile ID before fetching
       if (!user?.profile?._id) return;
 
       try {
         setLoading(true);
-        // Fetching all students. For large datasets, backend pagination should be implemented with search.
-        const response = await collegesApi.getStudents(user.profile._id, {
+
+        // ✅ FIX: Use getAllStudents (matching the updated API service)
+        const response = await collegesApi.getAllStudents(user.profile._id, {
           limit: 100,
         });
 
@@ -243,7 +239,7 @@ export default function Students() {
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {student.isVerifiedByCollege ? (
+                      {student.isVerified ? (
                         <Badge
                           variant="success"
                           size="sm"

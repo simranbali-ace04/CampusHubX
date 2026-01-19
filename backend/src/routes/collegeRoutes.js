@@ -10,7 +10,6 @@ const router = express.Router();
 router.get("/", collegeController.getAllColleges);
 
 // College routes (Protected)
-// 👉 1. Add this NEW route for stats
 router.get(
   "/stats",
   authenticate,
@@ -24,12 +23,22 @@ router.put(
   authorize(USER_ROLES.COLLEGE),
   collegeController.updateOwnProfile,
 );
+
 router.get(
   "/verifications/pending",
   authenticate,
   authorize(USER_ROLES.COLLEGE),
   collegeController.getPendingVerifications,
 );
+
+// ✅ ADDED THIS ROUTE (Must be before /:id)
+router.get(
+  "/students/:studentId",
+  authenticate,
+  authorize(USER_ROLES.COLLEGE),
+  collegeController.getStudentProfileForCollege,
+);
+
 router.post(
   "/verify-student/:studentId",
   authenticate,
@@ -39,6 +48,7 @@ router.post(
 
 // Parameterized routes (MUST come last)
 router.get("/:id", collegeController.getCollegeById);
+
 router.get(
   "/:id/students",
   authenticate,
