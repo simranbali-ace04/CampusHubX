@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import { useForm } from "react-hook-form";
 import {
   FaSearch,
   FaMapMarkerAlt,
   FaBriefcase,
   FaMoneyBillWave,
   FaCheckCircle,
+  FaPaperPlane,
 } from "react-icons/fa";
 import { opportunitiesApi } from "../../services/api/opportunities";
 import { applicationsApi } from "../../services/api/applications";
@@ -15,8 +17,9 @@ import Spinner from "../../components/common/Spinner/Spinner";
 import EmptyState from "../../components/common/EmptyState/EmptyState";
 import Badge from "../../components/common/Badge/Badge";
 import Button from "../../components/common/Button/Button";
-import Input from "../../components/common/Input/Input";
+import Input from "../../components/common/Input/Input"; // Kept for Search Bar
 import Select from "../../components/common/Select/Select";
+import Modal from "../../components/common/Modal/Modal";
 import { formatSalaryRange, formatDate } from "../../utils/helpers";
 import {
   ROUTES,
@@ -28,14 +31,24 @@ const Opportunities = () => {
   const [opportunities, setOpportunities] = useState([]);
   const [appliedIds, setAppliedIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
-  const [applyingId, setApplyingId] = useState(null);
 
-  // ✅ FIX: Renamed 'location' to 'locationType' to match backend expectation
+  // Modal & Selection State
+  const [selectedOpportunity, setSelectedOpportunity] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const [filters, setFilters] = useState({
     type: "",
     locationType: "",
     search: "",
   });
+
+  // Form Setup
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm();
 
   useEffect(() => {
     fetchData();
@@ -72,27 +85,41 @@ const Opportunities = () => {
     }
   };
 
-  const handleApply = async (e, opportunityId) => {
-    e.preventDefault();
-    if (appliedIds.has(opportunityId)) return;
+  // Handle "Apply Now" Click
+  const handleApplyClick = (opportunity) => {
+    setSelectedOpportunity(opportunity);
+    setIsModalOpen(true);
+    reset(); // Clear previous form data
+  };
 
-    setApplyingId(opportunityId);
+  // Handle Form Submission
+  const onSubmitApplication = async (data) => {
+    if (!selectedOpportunity) return;
+
     try {
-      const response = await applicationsApi.create({ opportunityId });
+      const payload = {
+        opportunityId: selectedOpportunity._id,
+        coverLetter: data.coverLetter,
+        resumeUrl: data.resumeUrl,
+      };
+
+      const response = await applicationsApi.create(payload);
+
       if (response.success) {
         toast.success("Applied successfully!");
-        setAppliedIds((prev) => new Set(prev).add(opportunityId));
+        setAppliedIds((prev) => new Set(prev).add(selectedOpportunity._id));
+        setIsModalOpen(false);
+        reset();
       }
     } catch (error) {
       const msg = error.response?.data?.error?.message || "Failed to apply";
       toast.error(msg);
-    } finally {
-      setApplyingId(null);
     }
   };
 
   return (
     <div className="space-y-8">
+      {/* Header & Filters */}
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
         <h1 className="text-3xl font-bold text-gray-900">
           Explore Opportunities
@@ -102,6 +129,7 @@ const Opportunities = () => {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          {/* Custom Input works here because it is Controlled (has value/onChange) */}
           <Input
             icon={FaSearch}
             placeholder="Search by role or company..."
@@ -120,7 +148,6 @@ const Opportunities = () => {
               })),
             ]}
           />
-          {/* ✅ FIX: Updated value and onChange to use locationType */}
           <Select
             placeholder="All Locations"
             value={filters.locationType}
@@ -138,6 +165,7 @@ const Opportunities = () => {
         </div>
       </div>
 
+      {/* Content */}
       {loading ? (
         <div className="flex justify-center py-20">
           <Spinner size="lg" />
@@ -146,7 +174,6 @@ const Opportunities = () => {
         <div className="grid grid-cols-1 gap-4">
           {opportunities.map((opportunity) => {
             const isApplied = appliedIds.has(opportunity._id);
-            const isApplying = applyingId === opportunity._id;
 
             return (
               <Card
@@ -229,16 +256,12 @@ const Opportunities = () => {
                           <Button
                             variant={isApplied ? "ghost" : "primary"}
                             size="sm"
-                            disabled={isApplied || isApplying}
-                            onClick={(e) => handleApply(e, opportunity._id)}
+                            disabled={isApplied}
+                            onClick={() =>
+                              !isApplied && handleApplyClick(opportunity)
+                            }
                           >
-                            {isApplying ? (
-                              <Spinner size="sm" />
-                            ) : isApplied ? (
-                              "Applied"
-                            ) : (
-                              "Apply Now"
-                            )}
+                            {isApplied ? "Applied" : "Apply Now"}
                           </Button>
                         </div>
                       </div>
@@ -255,6 +278,103 @@ const Opportunities = () => {
           message="Try adjusting your filters to find what you're looking for."
           icon={FaSearch}
         />
+      )}
+
+      {/* Application Modal */}
+      {selectedOpportunity && (
+        <Modal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          title={`Apply for ${selectedOpportunity.title}`}
+          size="lg"
+        >
+          <form
+            onSubmit={handleSubmit(onSubmitApplication)}
+            className="space-y-6"
+          >
+            <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800 mb-4">
+              <h4 className="font-semibold mb-1">
+                Make your application stand out!
+              </h4>
+              <p>
+                Ensure your profile skills match the job requirements to
+                increase your match score.
+              </p>
+            </div>
+
+            {/* Replaced Custom Textarea with Native HTML to fix ref issue */}
+            <div className="w-full">
+              <label
+                htmlFor="coverLetter"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Cover Letter
+              </label>
+              <textarea
+                id="coverLetter"
+                rows={6}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors resize-y ${
+                  errors.coverLetter ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Introduce yourself..."
+                {...register("coverLetter", {
+                  required: "Cover letter is required",
+                })}
+              />
+              {errors.coverLetter && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.coverLetter.message}
+                </p>
+              )}
+            </div>
+
+            {/* Replaced Custom Input with Native HTML to fix ref issue */}
+            <div className="w-full">
+              <label
+                htmlFor="resumeUrl"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Resume / Portfolio URL
+              </label>
+              <input
+                id="resumeUrl"
+                type="text"
+                className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                  errors.resumeUrl ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="https://drive.google.com/..."
+                {...register("resumeUrl", {
+                  required: "Resume URL is required",
+                  pattern: {
+                    value: /^(http|https):\/\/[^ "]+$/,
+                    message: "Please enter a valid URL",
+                  },
+                })}
+              />
+              {errors.resumeUrl && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.resumeUrl.message}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                Link to your Resume (Google Drive, LinkedIn, etc)
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" loading={isSubmitting} className="px-8">
+                <FaPaperPlane className="mr-2" /> Submit Application
+              </Button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );
