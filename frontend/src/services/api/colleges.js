@@ -1,6 +1,12 @@
 import apiClient from "./client";
 
 export const collegesApi = {
+  // ✅ ADDED: Fetch all colleges (Fixes the "collegesApi.getAll is not a function" error)
+  getAll: async (params = {}) => {
+    const response = await apiClient.get("/api/colleges", { params });
+    return response.data;
+  },
+
   // --- Profile ---
   getProfile: async () => {
     const response = await apiClient.get("/api/colleges/profile");
@@ -46,8 +52,7 @@ export const collegesApi = {
   },
 
   // --- Verifications ---
-  // ✅ FIX: This single endpoint now fetches BOTH projects and achievements
-  // filtered for YOUR college only.
+  // Fetches BOTH projects and achievements filtered for your college
   getPendingVerifications: async () => {
     const response = await apiClient.get("/api/colleges/verifications/pending");
     return response.data;
